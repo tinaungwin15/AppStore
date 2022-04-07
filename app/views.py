@@ -5,18 +5,20 @@ from django.db import connection
 def index(request):
     """Shows the main page"""
 
-    ## Delete customer
+    
+    ## Delete listing
     if request.POST:
         if request.POST['action'] == 'delete':
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM customers WHERE customerid = %s", [request.POST['id']])
+                cursor.execute("DELETE FROM Catalog WHERE ID_place = %s", [request.POST['ID_place']])
+
 
     ## Use raw query to get all objects
     with connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM customers ORDER BY customerid")
-        customers = cursor.fetchall()
+        cursor.execute("SELECT * FROM Catalog ORDER BY ID_place")
+        listings = cursor.fetchall()
 
-    result_dict = {'records': customers}
+    result_dict = {'records': listings}
 
     return render(request,'app/index.html',result_dict)
 
@@ -24,11 +26,11 @@ def index(request):
 def view(request, id):
     """Shows the main page"""
     
-    ## Use raw query to get a customer
+    ## Use raw query to get a listing
     with connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM customers WHERE customerid = %s", [id])
-        customer = cursor.fetchone()
-    result_dict = {'cust': customer}
+        cursor.execute("SELECT * FROM Catalog c, Account a WHERE c.ID_account = a.ID AND ID_place = %s", [id])
+        listing = cursor.fetchone()
+    result_dict = {'cust': listing}
 
     return render(request,'app/view.html',result_dict)
 
@@ -39,20 +41,23 @@ def add(request):
     status = ''
 
     if request.POST:
-        ## Check if customerid is already in the table
+        ## Check if id is already in the table
         with connection.cursor() as cursor:
 
-            cursor.execute("SELECT * FROM customers WHERE customerid = %s", [request.POST['customerid']])
-            customer = cursor.fetchone()
-            ## No customer with same id
-            if customer == None:
+            cursor.execute("SELECT * FROM Catalog WHERE ID_account = %s", [request.POST['ID_account']])
+            listing = cursor.fetchone()
+            ## No account with same id
+            if listing == None:
                 ##TODO: date validation
-                cursor.execute("INSERT INTO customers VALUES (%s, %s, %s, %s, %s, %s, %s)"
-                        , [request.POST['first_name'], request.POST['last_name'], request.POST['email'],
-                           request.POST['dob'] , request.POST['since'], request.POST['customerid'], request.POST['country'] ])
+                cursor.execute("INSERT INTO Catalog (ID_account, title, rating, country, city, price_per_night, type, address, guests, bedrooms, kitchen, parking, wifi, smoking_allowed, pets_allowed, air_conditioning, TV, washing_machine) VALUES (%s, %s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                        , [request.POST['ID_account'], request.POST['title'],
+                           request.POST['country'], request.POST['city'], request.POST['price_per_night'], 
+                           request.POST['type'], request.POST['address'], request.POST['guests'], request.POST['bedrooms'], request.POST['kitchen'],
+                              request.POST['parking'], request.POST['wifi'], request.POST['smoking_allowed'], request.POST['pets_allowed'], request.POST['air_conditioning'],
+                              request.POST['TV'], request.POST['washing_machine']])
                 return redirect('index')    
             else:
-                status = 'Customer with ID %s already exists' % (request.POST['customerid'])
+                status = 'Listing of account %s with address %s already exists' % (request.POST['ID_account'], request.POST['address'])
 
 
     context['status'] = status
@@ -69,7 +74,7 @@ def edit(request, id):
 
     # fetch the object related to passed id
     with connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM customers WHERE customerid = %s", [id])
+        cursor.execute("SELECT * FROM Catalog WHERE ID_place = %s", [id])
         obj = cursor.fetchone()
 
     status = ''
@@ -78,11 +83,14 @@ def edit(request, id):
     if request.POST:
         ##TODO: date validation
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE customers SET first_name = %s, last_name = %s, email = %s, dob = %s, since = %s, country = %s WHERE customerid = %s"
-                    , [request.POST['first_name'], request.POST['last_name'], request.POST['email'],
-                        request.POST['dob'] , request.POST['since'], request.POST['country'], id ])
-            status = 'Customer edited successfully!'
-            cursor.execute("SELECT * FROM customers WHERE customerid = %s", [id])
+            cursor.execute("UPDATE Catalog SET title = %s, country = %s, \
+                         city = %s, price_per_night = %s, type = %s, address = %s, guests = %s, bedrooms = %s , kitchen = %s, parking = %s, wifi = %s \
+                          , smoking_allowed = %s, pets_allowed = %s, air_conditioning = %s, TV = %s, washing_machine = %s WHERE ID_place = %s"
+                    , [request.POST['title'], request.POST['country'], request.POST['city'], request.POST['price_per_night'], 
+                        request.POST['type'], request.POST['address'], request.POST['guests'], request.POST['bedrooms'], request.POST['kitchen'], request.POST['parking']
+                       , request.POST['wifi'], request.POST['smoking_allowed'], request.POST['pets_allowed'], request.POST['air_conditioning'], request.POST['TV'], request.POST['washing_machine'], id ])
+            status = 'Listing edited successfully!'
+            cursor.execute("SELECT * FROM Catalog WHERE ID_place = %s", [id])
             obj = cursor.fetchone()
 
 
